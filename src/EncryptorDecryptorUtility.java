@@ -4,46 +4,44 @@ public class EncryptorDecryptorUtility {
     private int bufferSize = 64_000;
     private byte[] data = new byte[8];
     private byte[] result = new byte[8];
-    private byte[] buffer;
-    
+
     void encrypt(String fileFrom, String fileTo, String password) throws IOException {
 
         //Потоки чтения и записи
         InputStream fileIn = new BufferedInputStream(new FileInputStream(fileFrom));
-        FileOutputStream fileOut = new FileOutputStream(fileTo);
+        BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(fileTo));
 
         //Получаем байты пароля
         byte[] passwordByte = password.getBytes();
 
         //буферы чтения и записи
-        buffer = new byte[bufferSize];
-        byte[] writeBuffer;
+        byte[] buffer = new byte[bufferSize];
+        byte[] writeBuffer = new byte[bufferSize];
 
-        //Поток чтения их буфера
-        InputStream fromBufferReader = new ByteArrayInputStream(buffer);
+        //Поток чтения из буфера
+        InputStream fromBufferReader;
 
+        //читаем данные из файла в буфер для чтения
         while (true) {
             int countBytes = fileIn.read(buffer);
-
             if (countBytes == -1) break;
             if (countBytes > 0) {
-                buffer = new byte[countBytes];
-                writeBuffer = new byte[countBytes];
                 int index = 0;
+                fromBufferReader = new ByteArrayInputStream(buffer);
 
+                //читаем данные из буфера для чтения обрабатываем методом
+                //ProcessData и формируем буфер для записи для дальней передачи в файл
                 while (fromBufferReader.available() > 0) {
                     fromBufferReader.read(data, 0, 8);
                     ProcessData(passwordByte, data, result);
+                    System.arraycopy(result, 0, writeBuffer, index, result.length);
+                    index += result.length;
 
-                    for (byte b : result) {
-                        if (index < writeBuffer.length) {
-                            writeBuffer[index] = b;
-                            ++index;
-                        }
-                    }
                 }
-                System.out.println(writeBuffer.length);
-                fileOut.write(writeBuffer, 0, writeBuffer.length);
+
+                //запись файла данными из буфера
+                fileOut.write(writeBuffer, 0, countBytes);
+                fileOut.flush();
             }
         }
 
