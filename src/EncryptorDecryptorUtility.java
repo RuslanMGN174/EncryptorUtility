@@ -1,14 +1,13 @@
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.*;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 public class EncryptorDecryptorUtility {
+    private int bufferSize = 64_000;
     private byte[] data = new byte[8];
     private byte[] result = new byte[8];
+    private byte[] buffer;
     private String fileFrom;
     private String password;
     private String fileTo;
@@ -20,30 +19,50 @@ public class EncryptorDecryptorUtility {
     }
 
     void encrypt() throws IOException {
-        FileInputStream fileIn = new FileInputStream(fileFrom);
+
+        //Потоки чтения и записи
+        InputStream fileIn = new BufferedInputStream(new FileInputStream(fileFrom));
         FileOutputStream fileOut = new FileOutputStream(fileTo);
 
-        long startTime = System.currentTimeMillis();
-
+        //Получаем байты пароля
         byte[] passwordByte = password.getBytes();
-        byte[] buffer = new byte[fileIn.available()];
-        List<Byte> listBuffer = new ArrayList<>();
 
-        while (fileIn.available() > 0) {
-            fileIn.read(data, 0, 8);
-            ProcessData(passwordByte, data, result);
-            for (byte b : result) {
-                listBuffer.add(b);
+        //буферы чтения и записи
+        buffer = new byte[bufferSize];
+        byte[] writeBuffer;
+
+        //Поток чтения их буфера
+        InputStream fromBufferReader = new ByteArrayInputStream(buffer);
+
+
+        while (true) {
+
+            //количество прочитанных байт
+            int countBytes = fileIn.read(buffer);
+
+            if (countBytes == -1) break;
+            if (countBytes > 0) {
+
+                //обновление буфферов чтения и записи
+                buffer = new byte[countBytes];
+                writeBuffer = new byte[countBytes];
+                int index = 0;
+
+                while (fromBufferReader.available() > 0) {
+                    fromBufferReader.read(data, 0, 8);
+
+                    ProcessData(passwordByte, data, result);
+
+                    for (byte b : result) {
+                        if (index < writeBuffer.length) {
+                            writeBuffer[index] = b;
+                            ++index;
+                        }
+                    }
+                }
+                fileOut.write(writeBuffer, 0, writeBuffer.length);
             }
         }
-
-        for (int i = 0; i < buffer.length; i++) {
-            buffer[i] = listBuffer.get(i);
-        }
-
-        fileOut.write(buffer, 0, buffer.length);
-
-        System.out.println(System.currentTimeMillis() - startTime);
 
         fileIn.close();
         fileOut.close();
@@ -59,6 +78,5 @@ public class EncryptorDecryptorUtility {
         for (int i = 0; i < 8; ++i) {
             result[i] = (byte) (data[i] ^ password[i]);
         }
-
     }
 }
