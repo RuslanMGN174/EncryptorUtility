@@ -1,24 +1,12 @@
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class EncryptorDecryptorUtility {
     private int bufferSize = 64_000;
     private byte[] data = new byte[8];
     private byte[] result = new byte[8];
     private byte[] buffer;
-    private String fileFrom;
-    private String password;
-    private String fileTo;
-
-    public EncryptorDecryptorUtility(String fileFrom, String password, String fileTo) {
-        this.fileFrom = fileFrom;
-        this.password = password;
-        this.fileTo = fileTo;
-    }
-
-    void encrypt() throws IOException {
+    
+    void encrypt(String fileFrom, String fileTo, String password) throws IOException {
 
         //Потоки чтения и записи
         InputStream fileIn = new BufferedInputStream(new FileInputStream(fileFrom));
@@ -34,23 +22,17 @@ public class EncryptorDecryptorUtility {
         //Поток чтения их буфера
         InputStream fromBufferReader = new ByteArrayInputStream(buffer);
 
-
         while (true) {
-
-            //количество прочитанных байт
             int countBytes = fileIn.read(buffer);
 
             if (countBytes == -1) break;
             if (countBytes > 0) {
-
-                //обновление буфферов чтения и записи
                 buffer = new byte[countBytes];
                 writeBuffer = new byte[countBytes];
                 int index = 0;
 
                 while (fromBufferReader.available() > 0) {
                     fromBufferReader.read(data, 0, 8);
-
                     ProcessData(passwordByte, data, result);
 
                     for (byte b : result) {
@@ -60,6 +42,7 @@ public class EncryptorDecryptorUtility {
                         }
                     }
                 }
+                System.out.println(writeBuffer.length);
                 fileOut.write(writeBuffer, 0, writeBuffer.length);
             }
         }
@@ -78,5 +61,16 @@ public class EncryptorDecryptorUtility {
         for (int i = 0; i < 8; ++i) {
             result[i] = (byte) (data[i] ^ password[i]);
         }
+    }
+
+    void description() {
+        System.out.println(
+                "Утилита умеет шифровать и расшифровывать файлы.\n" +
+                        "\n" +
+                        "В параметрах запуска программы принимаются 4 параметра:\n" +
+                        "1. Имя входного файла.\n" +
+                        "2. Имя выходного файла.\n" +
+                        "3. Режим: шифровать или расшифровывать.\n" +
+                        "4. Пароль (8 символов).");
     }
 }
