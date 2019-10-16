@@ -5,6 +5,8 @@ public class EncryptorDecryptorUtility {
     private int bufferSize = 64_000;
     private byte[] data = new byte[8];
     private byte[] result = new byte[8];
+    private byte[] passwordByte;
+    private byte[] writeBuffer;
 
     void encrypt(String fileFrom, String fileTo, String password, boolean encrypt) throws IOException {
 
@@ -12,90 +14,124 @@ public class EncryptorDecryptorUtility {
         InputStream fileIn = new BufferedInputStream(new FileInputStream(fileFrom));
         BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(fileTo));
 
-        //Получаем байты пароля
-        byte[] passwordByte = password.getBytes();
+        passwordByte = password.getBytes();
 
-        //буферы чтения и записи
         byte[] buffer = new byte[bufferSize];
-        byte[] writeBuffer = new byte[bufferSize];
+        writeBuffer = new byte[bufferSize];
 
         //Поток чтения из буфера
         InputStream fromBufferReader = new ByteArrayInputStream(buffer);
 
+        int countBytes = fileIn.read(buffer);
 
         //читаем данные из файла в буфер для чтения
-        while (fileIn.available() > 0) {
-            int countBytes = fileIn.read(buffer);
-            int index = 0;
+        //пока количество прочитанныйх байт идентично размеру буфера
+        while (countBytes == buffer.length) {
+            readFromBuffer(fromBufferReader);
+            fileOut.write(writeBuffer, 0, bufferSize);
+            fileOut.flush();
+            countBytes = fileIn.read(buffer);
+        }
 
-            //читаем данные из буфера для чтения обрабатываем методом
-            //ProcessData и формируем буфер для записи для дальней передачи в файл
+        //читаем остатки или
+        //если количество прочитанныйх байт меньше буфера
+        if (countBytes < buffer.length) {
+
+            int fileSizeExtra;
+            if (countBytes % password.length() != 0) {
+                fileSizeExtra = countBytes / passwordByte.length * passwordByte.length + passwordByte.length;
+            } else {
+                fileSizeExtra = countBytes / passwordByte.length * passwordByte.length;
+            }
+
+            byte[] recidue = new byte[fileSizeExtra];
+            System.arraycopy(buffer, 0, recidue, 0, recidue.length);
+            readFromBuffer(new ByteArrayInputStream(recidue));
+            System.arraycopy(writeBuffer, 0, recidue, 0, recidue.length);
+
+            //пишем в файл при расшифровке
+            if (!encrypt) {
+                int lastBlockSize = recidue.length - 2;
+                fileOut.write(recidue, 0, lastBlockSize);
+                fileOut.flush();
+
+            }
+
+            //пишем в файл при зашифровке
+            if (encrypt) {
+                fileOut.write(recidue, 0, recidue.length);
+                fileOut.flush();
+            }
+
+            //массив байт для последнего 8-мибайтного блока
+            byte[] lastBlock = new byte[passwordByte.length];
+
+            //заполняем массив
+            System.arraycopy(recidue, recidue.length - lastBlock.length, lastBlock, 0, lastBlock.length);
+
+            //массив для расшифрованного посделнего блока
+            byte[] littleResult = new byte[8];
+            ProcessData(passwordByte, lastBlock, littleResult);
+            System.out.println(Arrays.toString(lastBlock));
+            System.out.println(Arrays.toString(littleResult));
+
+            int lastBlockForDecryptSize = 0;
+            byte[] differense = new byte[8];
+            for (int i = 1; i < password.length(); i++) {
+                differense[i] = (byte) (littleResult[i] - lastBlock[i]);
+                if (Math.abs(differense[i]) == passwordByte[i]) lastBlockForDecryptSize++;
+//                System.out.println(lastBlockForDecryptSize);
+            }
+            System.out.println(arraysCompare(differense, passwordByte));
+            System.out.println(Arrays.toString(passwordByte));
+            System.out.println(Arrays.toString(differense));
+
+
+            //пишем в файл при расшифровке
+            if (!encrypt) {
+                int lastBlockSize = recidue.length - lastBlockForDecryptSize;
+                fileOut.write(recidue, 0, lastBlockSize);
+                fileOut.flush();
+
+            }
+
+            //пишем в файл при зашифровке
+            if (encrypt) {
+                fileOut.write(recidue, 0, recidue.length);
+                fileOut.flush();
+            }
+
+        }
+
+        fileIn.close();
+        fileOut.close();
+    }
+
+
+    //читаем данные из буфера для чтения обрабатываем методом
+    //ProcessData и формируем буфер для записи для дальней передачи в файл
+    private void readFromBuffer(InputStream fromBufferReader) {
+        int index = 0;
+        try {
             while (fromBufferReader.available() > 0) {
                 fromBufferReader.read(data, 0, 8);
                 ProcessData(passwordByte, data, result);
                 System.arraycopy(result, 0, writeBuffer, index, result.length);
                 index += result.length;
             }
-
-            //когда размерфайла или остаток для чтения меньше буфера
-            if (countBytes < bufferSize) {
-
-                //вычисляем количество зашифрованных байт
-                int fileSizeExtra;
-                if (countBytes % password.length() != 0) {
-                    fileSizeExtra = countBytes / passwordByte.length * passwordByte.length + passwordByte.length;
-                } else {
-                    fileSizeExtra = countBytes / passwordByte.length * passwordByte.length;
-                }
-
-                //отдельный буфер для зашифрованных байт
-                byte[] extraBuffer = new byte[fileSizeExtra];
-
-
-                //массив байт для последнего 8-мибайтного блока
-                byte[] lastBlock = new byte[passwordByte.length];
-
-
-                //заполняем буффер
-                System.arraycopy(writeBuffer, 0, extraBuffer, 0, extraBuffer.length);
-//                System.out.println(Arrays.toString(extraBuffer));
-
-                //заполняем массив
-                System.arraycopy(extraBuffer, extraBuffer.length - lastBlock.length, lastBlock, 0, lastBlock.length);
-//                System.out.println(Arrays.toString(lastBlock));
-
-                //массив для расшифрованного посделнего блока
-                byte[] littleResult = new byte[8];
-                ProcessData(passwordByte, lastBlock, littleResult);
-
-//                int lastBlockForDecryptSize = 0;
-//                byte[] differense = new byte[8];
-//                for (int i = 1; i < password.length(); i++) {
-//                    differense[i] = (byte) (lastBlock[i]- littleResult[i]);
-//                    if (Math.abs(differense[i]) == passwordByte[i]) lastBlockForDecryptSize++;
-//                }
-
-
-                //пишем в файл при расшифровке
-                if (!encrypt) {
-                    int lastBlockSize = extraBuffer.length - 2;
-                    fileOut.write(extraBuffer, 0, lastBlockSize);
-                }
-
-                //пишем в файл при зашифровке
-                if (encrypt) {
-                    fileOut.write(extraBuffer, 0, extraBuffer.length);
-                }
-
-            } else {
-                fileOut.write(writeBuffer, 0, bufferSize);
-            }
-
-            fileOut.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
 
-        fileIn.close();
-        fileOut.close();
+    private int arraysCompare(byte[] a, byte[] b) {
+        int count = 0;
+        for (int i = 1; i < a.length; i++) {
+            if (a[i] == b[i]) count++;
+            if (a[i] != b[i]) count = 0;
+
+        }
+        return count;
     }
 
     // этот метод шифрует файл
