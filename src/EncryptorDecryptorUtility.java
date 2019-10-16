@@ -10,8 +10,8 @@ public class EncryptorDecryptorUtility {
 
     public static void main(String[] args) throws IOException {
 
-        String fileFrom = "C:\\Users\\knyazev.r\\Desktop\\New\\1234.txt";
-        String fileTo = "C:\\Users\\knyazev.r\\Desktop\\New\\12345.txt";
+        String fileFrom = "C:\\Users\\knyazev.r\\Desktop\\New\\2.pdf";
+        String fileTo = "C:\\Users\\knyazev.r\\Desktop\\New\\3.pdf";
         String password = "12345678";
 
         encrypt(fileFrom, fileTo, password, false);
@@ -73,10 +73,6 @@ public class EncryptorDecryptorUtility {
         while (fileIn.available() > 0) {
             int countBytes = fileIn.read(buffer);
 
-            if (countBytes < bufferSize){
-                countBytes = countBytes / passwordByte.length * passwordByte.length;
-            }
-
             fromBufferReader = new ByteArrayInputStream(buffer);
 
             //запись файла данными из буфера
@@ -90,6 +86,9 @@ public class EncryptorDecryptorUtility {
             }
 
             if (!encrypt) {
+                if (countBytes < bufferSize){
+                    countBytes = Integer.parseInt(fileSize) % bufferSize;
+                }
                 fileOut.write(fillWriteBuffer(fromBufferReader), 0, countBytes);
                 fileOut.flush();
             }
