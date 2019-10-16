@@ -10,27 +10,21 @@ public class EncryptorDecryptorUtility {
 
     public static void main(String[] args) throws IOException {
 
-        String fileFrom = "C:\\Users\\knyazev.r\\Desktop\\New\\2.pdf";
-        String fileTo = "C:\\Users\\knyazev.r\\Desktop\\New\\3.pdf";
-        String password = "12345678";
-
-        encrypt(fileFrom, fileTo, password, false);
-
-//        if (args.length != 4) {
-//            description();
-//        } else {
-//            if (args[3].length() != 8) throw new RuntimeException("Wrong password length");
-//            switch (args[2]) {
-//                case "encrypt":
-//                    encrypt(args[0], args[1], args[3], true);
-//                    break;
-//                case "decrypt":
-//                    encrypt(args[0], args[1], args[3], false);
-//                    break;
-//                default:
-//                    throw new RuntimeException("argument must be encrypt or decrypt");
-//            }
-//        }
+        if (args.length != 4) {
+            description();
+        } else {
+            if (args[3].length() != 8) throw new RuntimeException("Wrong password length");
+            switch (args[2]) {
+                case "encrypt":
+                    encrypt(args[0], args[1], args[3], true);
+                    break;
+                case "decrypt":
+                    encrypt(args[0], args[1], args[3], false);
+                    break;
+                default:
+                    throw new RuntimeException("argument must be encrypt or decrypt");
+            }
+        }
     }
 
     private static void encrypt(String fileFrom, String fileTo, String password, boolean encrypt) throws IOException {
@@ -46,7 +40,8 @@ public class EncryptorDecryptorUtility {
         byte[] buffer = new byte[bufferSize];
 
         //Поток чтения из буфера
-        InputStream fromBufferReader;
+        InputStream fromBufferReader = new ByteArrayInputStream(buffer);
+
 
         //Получаем размер файла
         String fileSize = String.valueOf(fileIn.available());
@@ -92,6 +87,7 @@ public class EncryptorDecryptorUtility {
                 fileOut.write(fillWriteBuffer(fromBufferReader), 0, countBytes);
                 fileOut.flush();
             }
+
         }
 
         fileIn.close();
