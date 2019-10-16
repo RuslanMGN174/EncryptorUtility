@@ -10,8 +10,8 @@ public class EncryptorDecryptorUtility {
 
     public static void main(String[] args) throws IOException {
 
-        String fileFrom = "C:\\Users\\knyazev.r\\Desktop\\New\\2.pdf";
-        String fileTo = "C:\\Users\\knyazev.r\\Desktop\\New\\3.pdf";
+        String fileFrom = "C:\\Users\\knyazev.r\\Desktop\\New\\1234.txt";
+        String fileTo = "C:\\Users\\knyazev.r\\Desktop\\New\\12345.txt";
         String password = "12345678";
 
         encrypt(fileFrom, fileTo, password, false);
@@ -46,32 +46,45 @@ public class EncryptorDecryptorUtility {
         byte[] buffer = new byte[bufferSize];
 
         //Поток чтения из буфера
-        InputStream fromBufferReader = new ByteArrayInputStream(buffer);
+        InputStream fromBufferReader;
 
-
+        //Получаем размер файла
         String fileSize = String.valueOf(fileIn.available());
         byte[] fileSizeBuffer = new byte[32];
 
+        //Во время шифрования всталяем инфо о рзмере файла в файл
+        //кодируем его
         if (encrypt) {
             fromBufferReader = new ByteArrayInputStream(fileSizeBuffer);
             System.arraycopy(fileSize.getBytes(), 0, fileSizeBuffer, 0, fileSize.length());
             fileOut.write(fillWriteBuffer(fromBufferReader), 0, fileSizeBuffer.length);
             fileOut.flush();
         }
+
+        //В овремя раскодировки забираем из файла инфо о его размере
         if (!encrypt) {
             int countFileSizeBytes = fileIn.read(fileSizeBuffer);
             fromBufferReader = new ByteArrayInputStream(fileSizeBuffer);
             fileSize = new String(fillWriteBuffer(fromBufferReader)).trim();
         }
 
-        fromBufferReader = new ByteArrayInputStream(buffer);
 
         //читаем данные из файла в буфер для чтения
         while (fileIn.available() > 0) {
             int countBytes = fileIn.read(buffer);
 
+            if (countBytes < bufferSize){
+                countBytes = countBytes / passwordByte.length * passwordByte.length;
+            }
+
+            fromBufferReader = new ByteArrayInputStream(buffer);
+
             //запись файла данными из буфера
             if (encrypt) {
+                if (countBytes < bufferSize){
+                    countBytes = countBytes / passwordByte.length * passwordByte.length + passwordByte.length;
+                }
+
                 fileOut.write(fillWriteBuffer(fromBufferReader), 0, countBytes);
                 fileOut.flush();
             }
